@@ -4,6 +4,11 @@ from vllm.core.scheduler import Scheduler
 class LLMActor:
     def __init__(self, *args, **kwargs):
         import vllm
+        import os
+
+        # 确保使用CUDA 12.4兼容的NCCL版本
+        os.environ["NCCL_VERSION"] = "2.21.5"
+        os.environ["CUDA_VERSION"] = "12.4"
 
         self.__version__ = vllm.__version__
         assert self.__version__ >= "0.4.1", "OpenRLHF only supports vLLM >= 0.4.1"
@@ -17,22 +22,20 @@ class LLMActor:
             vllm.worker.worker.Worker = OffloadableVLLMWorker
         else:
             # RayGPUExecutor
-            # See the patch https://github.com/vllm-project/vllm/commit/479d69fad0538f04cb22bf13e76ff91cfeb8a4e5
-            kwargs["worker_use_ray"] = True
-
-            if vllm.__version__ > "0.6.4.post1":
-                # https://github.com/vllm-project/vllm/pull/10555
+            if vllm.__version__ >= "0.7.0":
                 kwargs[
                     "worker_cls"
-                ] = "open_reasoner_zero.exp_engine.accelerators.inference.vllm_worker_wrap.OffloadableVLLMWorker"
+                ] = "orz.exp_engine.accelerators.inference.vllm_worker_wrap.OffloadableVLLMWorker"
             else:
+                # For older versions
+                kwargs["worker_use_ray"] = True
                 RayWorkerWrapperPath = vllm.executor.ray_utils
 
                 class RayWorkerWrapper(RayWorkerWrapperPath.RayWorkerWrapper):
                     def __init__(self, *args, **kwargs) -> None:
                         kwargs[
                             "worker_module_name"
-                        ] = "open_reasoner_zero.exp_engine.accelerators.inference.vllm_worker_wrap"
+                        ] = "orz.exp_engine.accelerators.inference.vllm_worker_wrap"
                         kwargs["worker_class_name"] = "OffloadableVLLMWorker"
                         super().__init__(*args, **kwargs)
 

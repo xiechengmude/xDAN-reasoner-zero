@@ -1,4 +1,9 @@
 import socket
+import os
+
+# 确保使用CUDA 12.4兼容的NCCL版本
+os.environ["NCCL_VERSION"] = "2.21.5"
+os.environ["CUDA_VERSION"] = "12.4"
 
 import ray
 import torch
